@@ -48,6 +48,33 @@ CapsLockCtrlEscape hotkey verification: passed
 
 Neither verification mode remains resident. The self-test mode does not install hotkeys or send input.
 
+## Development
+
+The repository includes the development artifacts used to harden and verify the remap:
+
+- [`tests/test_capslock_ctrl_escape.py`](tests/test_capslock_ctrl_escape.py) runs the embedded state tests and hotkey-registration check through the real AutoHotkey executable.
+- [`.hermes/specs/capslock-dual-role/SPEC.md`](.hermes/specs/capslock-dual-role/SPEC.md) records the acceptance criteria and traceability.
+- [`.hermes/plans/2026-08-23-capslock-dual-role.md`](.hermes/plans/2026-08-23-capslock-dual-role.md) records the implementation and verification plan.
+
+Run the normal development checks from PowerShell:
+
+```powershell
+python .\tests\test_capslock_ctrl_escape.py
+```
+
+To override AutoHotkey discovery:
+
+```powershell
+$env:AUTOHOTKEY_EXE = "D:\path\to\AutoHotkey64.exe"
+python .\tests\test_capslock_ctrl_escape.py
+```
+
+If the script is installed in your Startup folder and currently running, the optional deployment check also verifies byte identity and requires exactly one matching live process:
+
+```powershell
+python .\tests\test_capslock_ctrl_escape.py --deployment
+```
+
 ## Limitations
 
 - A normally launched script cannot inject input into elevated applications because of Windows UIPI.

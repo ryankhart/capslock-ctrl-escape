@@ -1,0 +1,112 @@
+from pathlib import Path
+import os
+import subprocess
+import sys
+
+
+ROOT = Path(__file__).resolve().parents[1]
+SCRIPT = ROOT / "inventory" / "exported-configs" / "CapsLockCtrlEscape.ahk"
+
+# The public repository keeps the script at its root.
+if not SCRIPT.is_file():
+    SCRIPT = ROOT / "CapsLockCtrlEscape.ahk"
+
+PROGRAM_FILES = Path(os.environ.get("ProgramFiles", ""))
+DEFAULT_AHK = PROGRAM_FILES / "AutoHotkey" / "v2" / "AutoHotkey64.exe"
+AHK = Path(os.environ.get("AUTOHOTKEY_EXE", DEFAULT_AHK))
+STARTUP_SCRIPT = (
+    Path(os.environ.get("APPDATA", Path.home() / "AppData" / "Roaming"))
+    / "Microsoft"
+    / "Windows"
+    / "Start Menu"
+    / "Programs"
+    / "Startup"
+    / SCRIPT.name
+)
+
+
+def run_mode(mode: str, expected: str) -> bool:
+    try:
+        result = subprocess.run(
+            [str(AHK), "/ErrorStdOut=UTF-8", str(SCRIPT), mode],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            timeout=1,
+            check=False,
+        )
+    except subprocess.TimeoutExpired:
+        print(f"FAIL: script did not exit in {mode} mode")
+        return False
+
+    output = (result.stdout + result.stderr).strip()
+    if result.returncode != 0:
+        print(output)
+        print(f"FAIL: {mode} exited with code {result.returncode}")
+        return False
+    if expected not in output:
+        print(output)
+        print(f"FAIL: expected {mode} summary was not emitted")
+        return False
+
+    print(output)
+    return True
+
+
+def verify_deployment() -> bool:
+    if not STARTUP_SCRIPT.is_file():
+        print(f"FAIL: Startup copy not found: {STARTUP_SCRIPT}")
+        return False
+    if SCRIPT.read_bytes() != STARTUP_SCRIPT.read_bytes():
+        print("FAIL: tracked and Startup script bytes differ")
+        return False
+
+    target = str(STARTUP_SCRIPT).replace("'", "''")
+    process_name = AHK.name.replace("'", "''")
+    command = (
+        f"$target='{target}'; $name='{process_name}'; "
+        "$matches=@(Get-CimInstance Win32_Process | Where-Object { "
+        "$_.Name -eq $name -and "
+        "$_.CommandLine -like ('*\"' + $target + '\"*') }); "
+        "[Console]::Out.Write($matches.Count)"
+    )
+    result = subprocess.run(
+        ["powershell.exe", "-NoProfile", "-Command", command],
+        capture_output=True,
+        text=True,
+        timeout=10,
+        check=False,
+    )
+    if result.returncode != 0:
+        print((result.stdout + result.stderr).strip())
+        print("FAIL: could not query the live AutoHotkey process")
+        return False
+    try:
+        process_count = int(result.stdout.strip())
+    except ValueError:
+        print(f"FAIL: unexpected process-count output: {result.stdout!r}")
+        return False
+    if process_count != 1:
+        print(f"FAIL: expected 1 live deployed process, found {process_count}")
+        return False
+
+    print("CapsLockCtrlEscape deployment verification: source matches Startup; 1 live process")
+    return True
+
+
+def main() -> int:
+    if not AHK.is_file():
+        print(f"FAIL: AutoHotkey v2 executable not found: {AHK}")
+        return 1
+
+    if not run_mode("--self-test", "CapsLockCtrlEscape self-test: 10 passed"):
+        return 1
+    if not run_mode("--verify-hotkeys", "CapsLockCtrlEscape hotkey verification: passed"):
+        return 1
+    if "--deployment" in sys.argv[1:] and not verify_deployment():
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -27,6 +27,18 @@ STARTUP_SCRIPT = (
 
 def verify_source_contract() -> bool:
     source = SCRIPT.read_text(encoding="utf-8")
+    if 'Hotkey("*CapsLock", CapsLockGesture)' not in source:
+        print("FAIL: Caps Lock must be owned by one gesture handler")
+        return False
+    if 'Hotkey("*CapsLock Up"' in source or "RecoverLostCapsUp" in source:
+        print("FAIL: Caps Lock must not split one gesture across an up hotkey or timer")
+        return False
+    if "KeyWait(" in source:
+        print("FAIL: Caps Lock release must not depend on a key-up event")
+        return False
+    if "WaitForPhysicalCapsRelease()" not in source:
+        print("FAIL: the Caps Lock gesture must poll for physical release")
+        return False
     if 'Hotkey("$Esc", ToggleCapsLock)' not in source:
         print("FAIL: physical Escape must be blocked while toggling Caps Lock")
         return False

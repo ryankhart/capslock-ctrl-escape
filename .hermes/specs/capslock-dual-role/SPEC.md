@@ -17,7 +17,7 @@ Keep the existing Windows behavior while preventing stray Escape events and lost
 
 ### REQ-002: robust modifier lifecycle
 
-- AC-007: The script uses remap-grade `LCtrl DownR` semantics, recovers from a lost Caps Lock up event, and releases its simulated left Ctrl during normal exit/reload.
+- AC-007: One gesture handler owns Caps Lock from physical press through a physical-state-polled release, uses remap-grade `LCtrl DownR` semantics, and releases its simulated left Ctrl during normal exit/reload.
 - AC-008: Releasing a physical left Ctrl while Caps Lock remains held causes the script to reassert the remapped left Ctrl.
 - AC-009: Releasing Caps Lock while physical left Ctrl remains held does not force that physical modifier logically up.
 

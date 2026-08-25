@@ -14,7 +14,7 @@ Simple dual-role scripts can emit a stray Escape after an unlisted key, lose tra
 - every physical keyboard virtual key, including keys already held;
 - mouse buttons and vertical or horizontal wheel input;
 - overlap with the physical left Ctrl key;
-- missed Caps Lock release events;
+- one press/release gesture owner instead of split down/up handlers;
 - normal script exit, reload, and replacement cleanup;
 - the 32-bit `A_TickCount` rollover.
 

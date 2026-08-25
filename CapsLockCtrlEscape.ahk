@@ -70,8 +70,7 @@ if (A_Args.Length && A_Args[1] = "--verify-hotkeys") {
 InstallRemap()
 
 InstallRemap() {
-    Hotkey("*CapsLock", CapsLockDown)
-    Hotkey("*CapsLock Up", CapsLockUp)
+    Hotkey("*CapsLock", CapsLockGesture)
     Hotkey("$Esc", ToggleCapsLock)
     Hotkey("~*LCtrl Up", PhysicalLCtrlUp)
 
@@ -84,10 +83,11 @@ InstallRemap() {
     OnExit(ReleaseRemappedCtrl)
 }
 
-CapsLockDown(*) {
+CapsLockGesture(*) {
     global g_State
 
-    ; Ignore typematic/repeated down events so they cannot reset tap state.
+    ; Keep this hotkey thread alive so default thread limits prevent
+    ; typematic/repeated down events from starting another gesture.
     if (!g_State.Press(A_TickCount))
         return
 
@@ -96,24 +96,27 @@ CapsLockDown(*) {
 
     StartKeyMonitor()
     Send("{Blind}{LCtrl DownR}")
-    SetTimer(RecoverLostCapsUp, 50)
+    result := 0
+    try {
+        WaitForPhysicalCapsRelease()
+        result := g_State.Release(A_TickCount)
+    } finally {
+        StopKeyMonitor()
+        if (g_State.IsHeld)
+            g_State.Reset()
+        ; Do not force a real left Ctrl logically up while it is physically held.
+        if (!GetKeyState("LCtrl", "P"))
+            Send("{Blind}{LCtrl Up}")
+    }
+
+    if (IsObject(result) && result.SendEsc)
+        SendTapEscape()
 }
 
-CapsLockUp(*) {
-    global g_State
-
-    SetTimer(RecoverLostCapsUp, 0)
-    StopKeyMonitor()
-    result := g_State.Release(A_TickCount)
-    if (!result.ReleaseCtrl)
-        return
-
-    ; Do not force a real left Ctrl logically up while it is physically held.
-    if (!GetKeyState("LCtrl", "P"))
-        Send("{Blind}{LCtrl Up}")
-
-    if (result.SendEsc)
-        SendTapEscape()
+WaitForPhysicalCapsRelease() {
+    ; Poll physical state so a swallowed key-up event cannot wedge the hotkey.
+    while GetKeyState("CapsLock", "P")
+        Sleep(10)
 }
 
 SendTapEscape() {
@@ -160,15 +163,6 @@ PhysicalLCtrlUp(*) {
     g_State.MarkUsed()
     if (GetKeyState("CapsLock", "P"))
         Send("{Blind}{LCtrl DownR}")
-    else
-        CapsLockUp()
-}
-
-RecoverLostCapsUp() {
-    global g_State
-
-    if (g_State.IsHeld && !GetKeyState("CapsLock", "P"))
-        CapsLockUp()
 }
 
 OtherPhysicalInputIsDown() {
@@ -195,7 +189,6 @@ ToggleCapsLock(*) {
 ReleaseRemappedCtrl(*) {
     global g_State
 
-    SetTimer(RecoverLostCapsUp, 0)
     StopKeyMonitor()
     if (g_State.Reset() && !GetKeyState("LCtrl", "P"))
         Send("{Blind}{LCtrl Up}")

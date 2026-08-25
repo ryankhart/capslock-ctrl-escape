@@ -25,6 +25,23 @@ STARTUP_SCRIPT = (
 )
 
 
+def verify_source_contract() -> bool:
+    source = SCRIPT.read_text(encoding="utf-8")
+    if 'Hotkey("$Esc", ToggleCapsLock)' not in source:
+        print("FAIL: physical Escape must be blocked while toggling Caps Lock")
+        return False
+    if 'Hotkey("~$Esc", ToggleCapsLock)' in source:
+        print("FAIL: physical Escape must not pass through to the active application")
+        return False
+    if "SendTapEscape()" not in source:
+        print("FAIL: Caps Lock taps must use the isolated Escape sender")
+        return False
+    if 'Hotkey("$Esc", "Off")' not in source or 'Hotkey("$Esc", "On")' not in source:
+        print("FAIL: synthetic Escape must bypass the physical-Escape interceptor")
+        return False
+    return True
+
+
 def run_mode(mode: str, expected: str) -> bool:
     try:
         result = subprocess.run(
@@ -97,6 +114,9 @@ def verify_deployment() -> bool:
 def main() -> int:
     if not AHK.is_file():
         print(f"FAIL: AutoHotkey v2 executable not found: {AHK}")
+        return 1
+
+    if not verify_source_contract():
         return 1
 
     if not run_mode("--self-test", "CapsLockCtrlEscape self-test: 10 passed"):

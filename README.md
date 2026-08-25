@@ -4,7 +4,7 @@ A small AutoHotkey v2 script that gives Caps Lock two useful roles:
 
 - Tap Caps Lock within 250 ms to send Escape.
 - Hold or use Caps Lock with another input to act as left Ctrl.
-- Press bare physical Escape to toggle the real Caps Lock state.
+- Press bare physical Escape to toggle the real Caps Lock state without also sending Escape to the active application.
 
 ## Why this version
 

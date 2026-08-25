@@ -72,7 +72,7 @@ InstallRemap()
 InstallRemap() {
     Hotkey("*CapsLock", CapsLockDown)
     Hotkey("*CapsLock Up", CapsLockUp)
-    Hotkey("~$Esc", ToggleCapsLock)
+    Hotkey("$Esc", ToggleCapsLock)
     Hotkey("~*LCtrl Up", PhysicalLCtrlUp)
 
     for keyName in [
@@ -113,7 +113,14 @@ CapsLockUp(*) {
         Send("{Blind}{LCtrl Up}")
 
     if (result.SendEsc)
-        Send("{Esc}")
+        SendTapEscape()
+}
+
+SendTapEscape() {
+    ; Keep the physical-Escape interceptor from swallowing this synthetic tap.
+    Hotkey("$Esc", "Off")
+    try Send("{Esc}")
+    finally Hotkey("$Esc", "On")
 }
 
 StartKeyMonitor() {

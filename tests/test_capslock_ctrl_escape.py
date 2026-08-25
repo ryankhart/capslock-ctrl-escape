@@ -27,7 +27,13 @@ STARTUP_SCRIPT = (
 
 def verify_source_contract() -> bool:
     source = SCRIPT.read_text(encoding="utf-8")
-    if 'Hotkey("*CapsLock", CapsLockGesture)' not in source:
+    if "InstallRemap(false)" not in source:
+        print("FAIL: hotkey verification must register disabled hotkeys")
+        return False
+    if "InstallRemap(enableHotkeys := true)" not in source:
+        print("FAIL: remap installation must support side-effect-free verification")
+        return False
+    if 'Hotkey("*CapsLock", CapsLockGesture, enabledOption)' not in source:
         print("FAIL: Caps Lock must be owned by one gesture handler")
         return False
     if 'Hotkey("*CapsLock Up"' in source or "RecoverLostCapsUp" in source:
@@ -39,7 +45,19 @@ def verify_source_contract() -> bool:
     if "WaitForPhysicalCapsRelease()" not in source:
         print("FAIL: the Caps Lock gesture must poll for physical release")
         return False
-    if 'Hotkey("$Esc", ToggleCapsLock)' not in source:
+    if 'DllCall("GetAsyncKeyState", "Int", vk, "Short")' not in source:
+        print("FAIL: physical-key checks must bypass AutoHotkey's cached hook state")
+        return False
+    if 'while GetKeyState("CapsLock", "P")' in source:
+        print("FAIL: release polling must not use AutoHotkey's cached Caps state")
+        return False
+    if source.count('GetKeyState("LCtrl", "P")') < 2:
+        print("FAIL: physical LCtrl checks must distinguish hardware from injected Ctrl")
+        return False
+    if 'vk => GetKeyState(' in source:
+        print("FAIL: the all-key overlap scan must not use cached physical state")
+        return False
+    if 'Hotkey("$Esc", ToggleCapsLock, enabledOption)' not in source:
         print("FAIL: physical Escape must be blocked while toggling Caps Lock")
         return False
     if 'Hotkey("~$Esc", ToggleCapsLock)' in source:

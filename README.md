@@ -11,10 +11,10 @@ A small AutoHotkey v2 script that gives Caps Lock two useful roles:
 Simple dual-role scripts can emit a stray Escape after an unlisted key, lose track of repeated Caps Lock events, or interfere with a physical Ctrl key. This version handles:
 
 - repeated Caps Lock key-down events;
-- every physical keyboard virtual key, including keys already held;
+- every physical keyboard virtual key via Windows-global state, including keys already held;
 - mouse buttons and vertical or horizontal wheel input;
 - overlap with the physical left Ctrl key;
-- one press/release gesture owner instead of split down/up handlers;
+- one press/release gesture owner using Windows-global physical state instead of hook-cached key-up events;
 - normal script exit, reload, and replacement cleanup;
 - the 32-bit `A_TickCount` rollover.
 
@@ -46,7 +46,7 @@ CapsLockCtrlEscape self-test: 10 passed
 CapsLockCtrlEscape hotkey verification: passed
 ```
 
-Neither verification mode remains resident. The self-test mode does not install hotkeys or send input.
+Neither verification mode remains resident. The self-test mode does not install hotkeys or send input; hotkey verification registers every name disabled so it cannot compete with a live remap process.
 
 ## Development
 

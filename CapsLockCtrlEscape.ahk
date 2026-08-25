@@ -62,25 +62,27 @@ if (A_Args.Length && A_Args[1] = "--self-test") {
 }
 
 if (A_Args.Length && A_Args[1] = "--verify-hotkeys") {
-    InstallRemap()
+    InstallRemap(false)
     FileAppend("CapsLockCtrlEscape hotkey verification: passed`n", "*")
     ExitApp 0
 }
 
 InstallRemap()
 
-InstallRemap() {
-    Hotkey("*CapsLock", CapsLockGesture)
-    Hotkey("$Esc", ToggleCapsLock)
-    Hotkey("~*LCtrl Up", PhysicalLCtrlUp)
+InstallRemap(enableHotkeys := true) {
+    enabledOption := enableHotkeys ? "On" : "Off"
+    Hotkey("*CapsLock", CapsLockGesture, enabledOption)
+    Hotkey("$Esc", ToggleCapsLock, enabledOption)
+    Hotkey("~*LCtrl Up", PhysicalLCtrlUp, enabledOption)
 
     for keyName in [
         "~*LButton", "~*RButton", "~*MButton", "~*XButton1", "~*XButton2",
         "~*WheelUp", "~*WheelDown", "~*WheelLeft", "~*WheelRight"
     ]
-        Hotkey(keyName, MarkPointerUse)
+        Hotkey(keyName, MarkPointerUse, enabledOption)
 
-    OnExit(ReleaseRemappedCtrl)
+    if (enableHotkeys)
+        OnExit(ReleaseRemappedCtrl)
 }
 
 CapsLockGesture(*) {
@@ -114,9 +116,18 @@ CapsLockGesture(*) {
 }
 
 WaitForPhysicalCapsRelease() {
-    ; Poll physical state so a swallowed key-up event cannot wedge the hotkey.
-    while GetKeyState("CapsLock", "P")
+    ; Bypass AutoHotkey's per-process hook cache: if that hook misses key-up,
+    ; GetKeyState(..., "P") can remain stale even after Windows sees release.
+    while PhysicalCapsIsDown()
         Sleep(10)
+}
+
+PhysicalCapsIsDown() {
+    return PhysicalVirtualKeyIsDown(0x14)
+}
+
+PhysicalVirtualKeyIsDown(vk) {
+    return (DllCall("GetAsyncKeyState", "Int", vk, "Short") & 0x8000) != 0
 }
 
 SendTapEscape() {
@@ -161,13 +172,13 @@ PhysicalLCtrlUp(*) {
         return
 
     g_State.MarkUsed()
-    if (GetKeyState("CapsLock", "P"))
+    if (PhysicalCapsIsDown())
         Send("{Blind}{LCtrl DownR}")
 }
 
 OtherPhysicalInputIsDown() {
     return AnyOtherVirtualKeyIsDown(
-        vk => GetKeyState(Format("vk{:02X}", vk), "P")
+        vk => PhysicalVirtualKeyIsDown(vk)
     )
 }
 

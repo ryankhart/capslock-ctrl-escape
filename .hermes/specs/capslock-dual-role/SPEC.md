@@ -17,13 +17,13 @@ Keep the existing Windows behavior while preventing stray Escape events and lost
 
 ### REQ-002: robust modifier lifecycle
 
-- AC-007: One gesture handler owns Caps Lock from physical press through a physical-state-polled release, uses remap-grade `LCtrl DownR` semantics, and releases its simulated left Ctrl during normal exit/reload.
+- AC-007: One gesture handler owns Caps Lock from physical press through a Win32 async-state-polled release that bypasses AutoHotkey's hook cache, uses remap-grade `LCtrl DownR` semantics, and releases its simulated left Ctrl during normal exit/reload.
 - AC-008: Releasing a physical left Ctrl while Caps Lock remains held causes the script to reassert the remapped left Ctrl.
-- AC-009: Releasing Caps Lock while physical left Ctrl remains held does not force that physical modifier logically up.
+- AC-009: Releasing Caps Lock uses AutoHotkey's physical-only left-Ctrl state—not Win32 async state, which includes injected Ctrl—so it releases script-owned Ctrl without forcing a physically held modifier logically up.
 
 ### REQ-003: complete input detection
 
-- AC-010: All physical keyboard keys except Caps Lock, including keys already held when Caps Lock is pressed, mark the current press as used without blocking the key.
+- AC-010: All physical keyboard keys except Caps Lock, including keys already held when Caps Lock is pressed, are checked through Win32 async state and mark the current press as used without blocking the key.
 - AC-011: Primary, secondary, middle, extra mouse buttons, and vertical/horizontal wheel input mark the current press as used without blocking the input.
 
 ### REQ-004: Caps Lock toggle
@@ -33,7 +33,7 @@ Keep the existing Windows behavior while preventing stray Escape events and lost
 
 ### REQ-005: portable verification and deployment
 
-- AC-014: Running the standalone script with `--self-test` performs no hotkey installation and exits successfully only when all state-machine tests pass.
+- AC-014: Running the standalone script with `--self-test` performs no hotkey installation; `--verify-hotkeys` registers names disabled so it cannot intercept input beside a live remap; both modes exit immediately.
 - AC-015: The tracked and Startup copies are byte-identical, parse under installed AutoHotkey v2, and the Startup copy runs after deployment.
 
 ## Non-goals

@@ -4,6 +4,7 @@ A small AutoHotkey v2 script that gives Caps Lock two useful roles:
 
 - Tap Caps Lock within 250 ms to send Escape.
 - Hold or use Caps Lock with another input to act as left Ctrl.
+- In listed games, a tap still sends Escape while a movement key or mouse button is held.
 - Press bare physical Escape to toggle the real Caps Lock state without also sending Escape to the active application.
 
 ## Why this version
@@ -11,10 +12,11 @@ A small AutoHotkey v2 script that gives Caps Lock two useful roles:
 Simple dual-role scripts can emit a stray Escape after an unlisted key, lose track of repeated Caps Lock events, or interfere with a physical Ctrl key. This version handles:
 
 - repeated Caps Lock key-down events;
-- every physical keyboard virtual key via Windows-global state, including keys already held;
+- every other keyboard key via Windows-global state, including keys already held (their auto-repeat does not count as a new press);
 - mouse buttons and vertical or horizontal wheel input;
 - overlap with the physical left Ctrl key;
-- one press/release gesture owner using Windows-global physical state instead of hook-cached key-up events;
+- one press/release gesture owner that reads the held Caps Lock key from AutoHotkey's keyboard hook (Windows' `GetAsyncKeyState` cannot see a key the script blocks, so polling it ends every hold instantly);
+- an elevated window or the secure desktop (UAC prompt, lock screen) taking over mid-hold, which would otherwise hide the key-up and leave Ctrl stuck;
 - normal script exit, reload, and replacement cleanup;
 - the 32-bit `A_TickCount` rollover.
 
@@ -42,11 +44,17 @@ $ahk = Join-Path $env:ProgramFiles "AutoHotkey\v2\AutoHotkey64.exe"
 Expected output:
 
 ```text
-CapsLockCtrlEscape self-test: 10 passed
+CapsLockCtrlEscape self-test: 12 passed
 CapsLockCtrlEscape hotkey verification: passed
 ```
 
 Neither verification mode remains resident. The self-test mode does not install hotkeys or send input; hotkey verification registers every name disabled so it cannot compete with a live remap process.
+
+## Games
+
+Outside games, any key or mouse button already held when Caps Lock goes down makes that press count as Ctrl, so brushing Caps Lock while typing cannot fire a stray Escape. In a game a movement key or mouse button is nearly always held, so that rule would swallow every Escape. Windows listed in `g_TapWhileHoldingWindows` near the top of the script skip it: a quick tap sends Escape even while other input is held, and pressing a new key or mouse button during the hold still makes it Ctrl.
+
+The list ships with `ahk_exe Wow.exe` (World of Warcraft). Add one entry per game, for example `"ahk_exe Game.exe"`.
 
 ## Development
 

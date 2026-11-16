@@ -36,26 +36,35 @@ def verify_source_contract() -> bool:
     if 'Hotkey("*CapsLock", CapsLockGesture, enabledOption)' not in source:
         print("FAIL: Caps Lock must be owned by one gesture handler")
         return False
-    if 'Hotkey("*CapsLock Up"' in source or "RecoverLostCapsUp" in source:
-        print("FAIL: Caps Lock must not split one gesture across an up hotkey or timer")
+    if 'Hotkey("*CapsLock Up", CapsLockReleased, enabledOption)' not in source:
+        print("FAIL: the key-up hotkey must only record the release for injected presses")
+        return False
+    if "RecoverLostCapsUp" in source:
+        print("FAIL: the gesture must not be finished from a timer")
         return False
     if "KeyWait(" in source:
-        print("FAIL: Caps Lock release must not depend on a key-up event")
+        print("FAIL: Caps Lock release must not depend on a key-up event alone")
         return False
-    if "WaitForPhysicalCapsRelease()" not in source:
-        print("FAIL: the Caps Lock gesture must poll for physical release")
+    if "WaitForCapsRelease()" not in source:
+        print("FAIL: the Caps Lock gesture must poll for release")
         return False
-    if 'DllCall("GetAsyncKeyState", "Int", vk, "Short")' not in source:
-        print("FAIL: physical-key checks must bypass AutoHotkey's cached hook state")
+    if '? GetKeyState("CapsLock", "P")' not in source:
+        print("FAIL: a physical Caps Lock hold must be read from the keyboard hook")
         return False
-    if 'while GetKeyState("CapsLock", "P")' in source:
-        print("FAIL: release polling must not use AutoHotkey's cached Caps state")
+    if "WindowsSeesKeyDown(0x14)" in source or "PhysicalCapsIsDown" in source:
+        print("FAIL: GetAsyncKeyState cannot see the blocked Caps Lock key; do not poll it")
+        return False
+    if "KeyboardHookIsBlind()" not in source:
+        print("FAIL: the hold must end when an elevated window or secure desktop takes over")
+        return False
+    if 'g_TapWhileHoldingWindows := ["ahk_exe Wow.exe"]' not in source:
+        print("FAIL: games must keep tap-to-Escape while other input is held")
         return False
     if source.count('GetKeyState("LCtrl", "P")') < 2:
         print("FAIL: physical LCtrl checks must distinguish hardware from injected Ctrl")
         return False
     if 'vk => GetKeyState(' in source:
-        print("FAIL: the all-key overlap scan must not use cached physical state")
+        print("FAIL: the all-key overlap scan must use Windows-global state")
         return False
     if 'Hotkey("$Esc", ToggleCapsLock, enabledOption)' not in source:
         print("FAIL: physical Escape must be blocked while toggling Caps Lock")
@@ -149,7 +158,7 @@ def main() -> int:
     if not verify_source_contract():
         return 1
 
-    if not run_mode("--self-test", "CapsLockCtrlEscape self-test: 10 passed"):
+    if not run_mode("--self-test", "CapsLockCtrlEscape self-test: 12 passed"):
         return 1
     if not run_mode("--verify-hotkeys", "CapsLockCtrlEscape hotkey verification: passed"):
         return 1

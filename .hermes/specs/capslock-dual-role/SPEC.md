@@ -17,13 +17,15 @@ Keep the existing Windows behavior while preventing stray Escape events and lost
 
 ### REQ-002: robust modifier lifecycle
 
-- AC-007: One gesture handler owns Caps Lock from physical press through a Win32 async-state-polled release that bypasses AutoHotkey's hook cache, uses remap-grade `LCtrl DownR` semantics, and releases its simulated left Ctrl during normal exit/reload.
+- AC-007: One gesture handler owns Caps Lock from press through release, uses remap-grade `LCtrl DownR` semantics, and releases its simulated left Ctrl during normal exit/reload. A physical hold is polled from AutoHotkey's hook-tracked physical state, because Win32 async state never sees a key-down that the hook blocked (measured 2026-11-16: it reads up for the whole hold, which ended every gesture at once). A press injected by other software has no physical state and is followed through its key-up event.
+- AC-007a: If an elevated window or the secure desktop takes over during a hold, the gesture ends without Escape and the simulated left Ctrl is released as soon as input can be sent again.
 - AC-008: Releasing a physical left Ctrl while Caps Lock remains held causes the script to reassert the remapped left Ctrl.
 - AC-009: Releasing Caps Lock uses AutoHotkey's physical-only left-Ctrl state—not Win32 async state, which includes injected Ctrl—so it releases script-owned Ctrl without forcing a physically held modifier logically up.
 
 ### REQ-003: complete input detection
 
 - AC-010: All physical keyboard keys except Caps Lock, including keys already held when Caps Lock is pressed, are checked through Win32 async state and mark the current press as used without blocking the key.
+- AC-010a: In windows listed in `g_TapWhileHoldingWindows` (games; ships with `ahk_exe Wow.exe`), input already held when Caps Lock is pressed does not mark the press as used, and auto-repeat of those held keys is ignored, so a tap still sends Escape while moving or steering. New key or mouse presses during the hold still mark it used.
 - AC-011: Primary, secondary, middle, extra mouse buttons, and vertical/horizontal wheel input mark the current press as used without blocking the input.
 
 ### REQ-004: Caps Lock toggle
@@ -68,7 +70,7 @@ Keep the existing Windows behavior while preventing stray Escape events and lost
 | Acceptance criteria | Evidence | Task |
 |---|---|---|
 | AC-001 to AC-006 | Built-in pure state-machine self-tests | Implement state object |
-| AC-007 to AC-009 | Source assertions, self-test cleanup transition, live restart | Implement modifier lifecycle |
+| AC-007 to AC-009 | Source assertions, self-test cleanup transition, live restart; AC-007 and AC-010a also checked on 2026-11-16 with injected Caps Lock presses in World of Warcraft | Implement modifier lifecycle |
 | AC-010 to AC-013 | InputHook/mouse registration source checks and AHK parse | Implement input adapters |
 | AC-014 | `tests/test_capslock_ctrl_escape.py` | Add self-test mode |
 | AC-015 | Byte comparison and live-process query | Deploy Startup copy |
